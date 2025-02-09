@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -43,38 +42,37 @@ func DeleteCustomer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 📌 Intentar eliminar el cliente en la base de datos
-	result, err := customerCollection.DeleteOne(context.TODO(), bson.M{"_id": objID})
+	// 🔍 Buscar si el cliente existe antes de eliminarlo
+	var existingCustomer models.Customer
+	err = customerCollection.FindOne(context.TODO(), bson.M{"_id": objID}).Decode(&existingCustomer)
+	if err != nil {
+		http.Error(w, "⚠️ Cliente no encontrado en DeleteCustomer", http.StatusNotFound)
+		return
+	}
+
+	// 🗑️ Eliminar el cliente
+	_, err = customerCollection.DeleteOne(context.TODO(), bson.M{"_id": objID})
 	if err != nil {
 		http.Error(w, "❌ Error al eliminar cliente", http.StatusInternalServerError)
 		return
 	}
 
-	if result.DeletedCount == 0 {
-		fmt.Println("⚠️ Cliente no encontrado en DeleteCustomerDB:", id)
-		http.Error(w, "⚠️ Cliente no encontrado en DeleteCustomerDB", http.StatusNotFound)
-		return
-	}
+	fmt.Println("✅ Cliente eliminado correctamente:", existingCustomer.Email)
 
-	fmt.Println("✅ Cliente eliminado correctamente en DeleteCustomerDB:", id)
-
-	// 🔄 **Sincronizar la eliminación con los otros microservicios**
+	// 🔄 **Sincronizar con ReadCustomer y CreateCustomer**
 	go syncDeleteWithMicroservices(id)
 
 	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Cliente eliminado correctamente"})
 }
 
 // 📌 **Notificar la eliminación a los otros microservicios**
 func syncDeleteWithMicroservices(customerID string) {
 	services := []string{
-		os.Getenv("READ_CUSTOMER_SERVICE") + "/sync-delete",   // URL de ReadCustomer
-		os.Getenv("CREATE_CUSTOMER_SERVICE") + "/sync-delete", // URL de CreateCustomer
-		os.Getenv("UPDATE_CUSTOMER_SERVICE") + "/sync-delete", // URL de UpdateCustomer
+		os.Getenv("READ_CUSTOMER_SERVICE") + "/sync-delete",
+		os.Getenv("CREATE_CUSTOMER_SERVICE") + "/sync-delete",
+		os.Getenv("UPDATE_CUSTOMER_SERVICE") + "/sync-delete",
 	}
-
-	// 📌 Crear JSON con solo el ID del cliente eliminado
-	customerData := map[string]string{"id": customerID}
-	customerJSON, _ := json.Marshal(customerData)
 
 	for _, service := range services {
 		if service == "" {
@@ -82,23 +80,21 @@ func syncDeleteWithMicroservices(customerID string) {
 			continue
 		}
 
-		fmt.Println("🔄 Enviando sincronización de eliminación a:", service)
-
-		req, err := http.NewRequest("POST", service, bytes.NewBuffer(customerJSON))
+		url := service + "/" + customerID
+		req, err := http.NewRequest("DELETE", url, nil)
 		if err != nil {
 			fmt.Println("❌ Error creando solicitud HTTP:", err)
 			continue
 		}
 
-		req.Header.Set("Content-Type", "application/json")
 		client := &http.Client{}
 		resp, err := client.Do(req)
 		if err != nil {
-			fmt.Println("❌ Error enviando solicitud a", service, ":", err)
+			fmt.Println("❌ Error enviando solicitud a", url, ":", err)
 			continue
 		}
 
-		fmt.Println("✅ Sincronización de eliminación exitosa con:", service, " Status:", resp.Status)
+		fmt.Println("✅ Sincronización de eliminación exitosa con:", url, " Status:", resp.Status)
 		resp.Body.Close()
 	}
 }
