@@ -34,9 +34,11 @@ jobs:
 
     - name: Add EC2 host to known_hosts 🌐
       run: |
+        # Verificar si el directorio ~/.ssh ya existe, si no, crearlo
         mkdir -p ~/.ssh
-        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
         chmod 700 ~/.ssh
+        # Añadir la clave del host EC2
+        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
         chmod 644 ~/.ssh/known_hosts
 
     - name: Deploy to EC2 (Optional) 🌐
