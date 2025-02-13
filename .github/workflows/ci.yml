@@ -24,11 +24,11 @@ jobs:
 
     - name: Build Docker image 🔨
       run: |
-        docker build -t erickuce/projectawsstore-deletecustomer:latest .
+        sudo docker build -t erickuce/projectawsstore-deletecustomer:latest .
 
     - name: Push Docker image to Docker Hub 🌍
       run: |
-        docker push erickuce/projectawsstore-deletecustomer:latest
+        sudo docker push erickuce/projectawsstore-deletecustomer:latest
 
     - name: Add EC2 host to known_hosts 🌐
       run: |
@@ -44,10 +44,10 @@ jobs:
         USER: ${{ secrets.EC2_USER }}
       run: |
         # Guardar la clave privada en un archivo temporal y establecer permisos
-        echo "$PRIVATE_KEY" | tr -d '\r' > private_key.pem  # Quitar saltos de línea adicionales
+        echo "$PRIVATE_KEY" | tr -d '\r' > private_key.pem
         chmod 600 private_key.pem
         # Asegurarse de que la clave se maneje correctamente para la conexión SSH
         ssh -T -o StrictHostKeyChecking=no -i private_key.pem $USER@$HOST << 'EOF'
-          docker pull erickuce/projectawsstore-deletecustomer:latest
-          docker run -d -p 8084:8084 erickuce/projectawsstore-deletecustomer:latest
+          sudo docker pull erickuce/projectawsstore-deletecustomer:latest
+          sudo docker run -d -p 8084:8084 erickuce/projectawsstore-deletecustomer:latest
         EOF
