@@ -61,6 +61,6 @@ func main() {
 	}
 
 	// ✅ Iniciar el servidor en el puerto definido en `.env`
-	fmt.Println("✅ Servidor owosnT corriendo en el puerto", port)
+	fmt.Println("✅ Servidor owosn corriendo en el puerto", port)
 	log.Fatal(http.ListenAndServe(":"+port, handler)) // ✅ Ahora sí usa CORS
 }
