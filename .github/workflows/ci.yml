@@ -45,6 +45,10 @@ jobs:
     - name: Test SSH connection to EC2 🔒
       run: |
         echo "Probando la conexión SSH a EC2..."
+        echo "$PRIVATE_KEY" | tr -d '\r' > private_key.pem  # Quitar saltos de línea adicionales
+        chmod 600 private_key.pem  # Asegurarse de que la clave privada tiene los permisos adecuados
+        ls -l private_key.pem  # Verificar los permisos del archivo de clave
+        cat private_key.pem    # Verificar el contenido del archivo de clave
         ssh -T -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
           echo "Conexión SSH exitosa a EC2."
         EOF
